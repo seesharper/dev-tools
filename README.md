@@ -19,7 +19,7 @@ git clone https://github.com/seesharper/dev-scripts.git
 In the repo folder
 
 ```shell
-dotnet script install-script.csx install-script-csx
+dotnet script install-script.csx install-script.csx
 ```
 
 > Yup, look a bit funky, but that's bootstrapping for ya
