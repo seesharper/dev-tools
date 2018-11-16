@@ -45,3 +45,26 @@ Opens the AppVeyor build history based on the current git repository.
 #### travis
 
 Opens the Travis build history based on the current git repository.
+
+#### deps
+
+Compares the NuGet package references found in `csproj` files with the latest versions found in the available NuGet feeds. 
+
+Update all NuGet packages
+
+```shell
+deps update
+```
+
+Update packages matching simple filter (contains)
+
+```shell
+deps update -f Microsoft
+```
+
+Update packages matching a regular expression.
+
+```shell
+deps update -fr Microsoft.+
+```
+
