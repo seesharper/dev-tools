@@ -37,14 +37,25 @@ private async Task<int> ListPackages(string filter)
 
     var packageReferences = GetPackageReferences(filter, rootFolder);
     var latestVersions = await GetLatestVersions(packageReferences.Select(r => r.Name).Distinct().ToArray(), rootFolder);
-    var map = latestVersions.ToDictionary(v => v.PackageName);
-    foreach (var packageReference in packageReferences)
+
+    var packageReferencesGroupedByProject = packageReferences.Where(p => latestVersions[p.Name].NugetVersion > p.Version).GroupBy(p => p.ProjectFile);
+
+
+    foreach (var grouping in packageReferencesGroupedByProject)
     {
-        var latestVersion = map[packageReference.Name];
-        if (latestVersion.NugetVersion > packageReference.Version)
+        var test = grouping.Count();
+        if (grouping.Count() == 0)
         {
+            continue;
+        }
+        WriteHeader(Path.GetRelativePath(rootFolder,grouping.Key));
+        WriteLine();
+        foreach (var packageReference in grouping)
+        {
+            var latestVersion = latestVersions[packageReference.Name];
             WriteHighlighted($"{packageReference.Name} {packageReference.Version} => {latestVersion.NugetVersion} ({latestVersion.Feed})");
         }
+        WriteLine();
     }
     return 0;
 }
@@ -55,10 +66,9 @@ private async Task<int> UpdatePackages(string filter){
 
     var packageReferences = GetPackageReferences(filter, rootFolder);
     var latestVersions = await GetLatestVersions(packageReferences.Select(r => r.Name).Distinct().ToArray(), rootFolder);
-    var map = latestVersions.ToDictionary(v => v.PackageName);
     foreach (var packageReference in packageReferences)
     {
-        var latestVersion = map[packageReference.Name];
+        var latestVersion = latestVersions[packageReference.Name];
         if (latestVersion.NugetVersion > packageReference.Version)
         {
             Command.Capture("dotnet", $"add {packageReference.ProjectFile} package {packageReference.Name}").EnsureSuccessfulExitCode().Dump();
@@ -118,26 +128,17 @@ private class LatestVersion
     public string Feed { get; }
 }
 
-private async Task<LatestVersion[]> GetLatestVersions(string[] packageReferences, string rootFolder)
+private async Task<IDictionary<string, LatestVersion>> GetLatestVersions(string[] packageNames, string rootFolder)
 {
     WriteHighlighted($"Getting the latest package versions. Hang on.....");
 
     var sourceRepositories = GetSourceRepositories(rootFolder);
 
-    var tasks = new List<Task>();
+    var result = new ConcurrentBag<LatestVersion>();
 
-    ConcurrentBag<LatestVersion> result = new ConcurrentBag<LatestVersion>();
+    await Task.WhenAll(packageNames.Select(name => GetLatestVersion(name, sourceRepositories, result)));
 
-
-    foreach (var packageReference in packageReferences)
-    {
-        tasks.Add(GetLatestVersion(packageReference, sourceRepositories, result));
-    }
-
-    await Task.WhenAll(tasks);
-
-    return result.ToArray();
-
+    return result.ToDictionary(v => v.PackageName);
 }
 
 private async Task GetLatestVersion(string packageName, SourceRepository[] repositories, ConcurrentBag<LatestVersion> result)
@@ -147,8 +148,9 @@ private async Task GetLatestVersion(string packageName, SourceRepository[] repos
     {
         var findResource = repository.GetResource<FindPackageByIdResource>();
         var allVersions = await findResource.GetAllVersionsAsync(packageName, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None);
-        allLatestVersions.Add(new LatestVersion(packageName, allVersions.Last(), repository.ToString()));
+        allLatestVersions.Add(new LatestVersion(packageName, allVersions.Where(v => !v.IsPrerelease).Last(), repository.ToString()));
     }
+
     result.Add(allLatestVersions.OrderBy(v => v.NugetVersion).Last());
 }
 
@@ -162,6 +164,7 @@ private SourceRepository[] GetSourceRepositories(string rootFolder)
     {
         WriteNormal($" * {repository.PackageSource.ToString()}");
     }
+
     WriteLine();
 
     return repositories.ToArray();

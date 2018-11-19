@@ -19,6 +19,14 @@ public void WriteHighlighted(string value)
     Console.ResetColor();
 }
 
+public void WriteHeader(string value)
+{
+    Console.ForegroundColor = ConsoleColor.Magenta;
+    Out.WriteLine(value.TrimEnd(Environment.NewLine.ToCharArray()));
+    Console.ResetColor();
+}
+
+
 public void WriteNormal(string value)
 {
     Out.WriteLine(value.TrimEnd(Environment.NewLine.ToCharArray()));
