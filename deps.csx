@@ -1,5 +1,6 @@
 #!/usr/bin/env dotnet-script
 #load "console.csx"
+#load "command.csx"
 #r "nuget:NuGet.Configuration, 4.5.0"
 #r "nuget:NuGet.Packaging.Core.Types, 4.2.0"
 #r "nuget:NuGet.Protocol.Core.v3, 4.2.0"
@@ -20,7 +21,7 @@ var filterOption = app.Option("-f | --filter", "Filter packages", CommandOptionT
 
 var updateCommand = app.Command("update", c => {});
 
-updateCommand.OnExecute(() => UpdatePackages());
+updateCommand.OnExecute(() => UpdatePackages(filterOption.Value()));
 
 app.OnExecute(() => ListPackages(filterOption.Value()));
 
@@ -45,9 +46,23 @@ private async Task<int> ListPackages(string filter)
     return 0;
 }
 
-private int UpdatePackages(){
-    // TODO updates packages
-    WriteLine("Update");
+private async Task<int> UpdatePackages(string filter){
+
+    var rootFolder = Directory.GetCurrentDirectory();
+
+    var packageReferences = GetPackageReferences(filter, rootFolder);
+    var latestVersions = await GetLatestVersions(packageReferences.Select(r => r.Name).Distinct().ToArray(), rootFolder);
+    var map = latestVersions.ToDictionary(v => v.PackageName);
+    foreach (var packageReference in packageReferences)
+    {
+        var latestVersion = map[packageReference.Name];
+        if (latestVersion.NugetVersion > packageReference.Version)
+        {
+            Command.Capture("dotnet", $"add {packageReference.ProjectFile} package {packageReference.Name}").EnsureSuccessfulExitCode().Dump();
+        }
+    }
+
+    WriteSuccess("All packages updated successfully");
     return 0;
 }
 
