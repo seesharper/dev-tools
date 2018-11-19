@@ -19,7 +19,7 @@ else
 
 
 var pathToBashScript = Path.Combine("/usr/local/bin", commandName);
-var bashScriptContent = $"{pathToScript} \"$@\"";
+var bashScriptContent = $"{pathToScript} -- \"$@\"";
 File.WriteAllText(pathToBashScript, bashScriptContent);
 
 Execute("chmod", $"+x {pathToBashScript}");
