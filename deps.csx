@@ -18,64 +18,54 @@ using McMaster.Extensions.CommandLineUtils;
 using System.Collections.Concurrent;
 
 var app = new CommandLineApplication();
-var filterOption = app.Option("-f | --filter", "Filter packages", CommandOptionType.SingleValue);
+var filterOption = app.Option("-f | --filter", "Filter packages to be processed.", CommandOptionType.SingleValue);
 
-var updateCommand = app.Command("update", c => {});
+var updateCommand = app.Command("update", c => {
+    c.Description = "Updates packages to their latest versions";
+});
 
-updateCommand.OnExecute(() => UpdatePackages(filterOption.Value()));
+updateCommand.OnExecute(() => ProcessPackages(filterOption.Value(), update:true));
 
-app.OnExecute(() => ListPackages(filterOption.Value()));
+app.OnExecute(() => ProcessPackages(filterOption.Value(), update: false));
 
+var helpOption = app.HelpOption("-h | --help");
 
 return app.Execute(Args.ToArray());
 
-private async Task<int> ListPackages(string filter)
+private async Task<int> ProcessPackages(string filter, bool update)
 {
-    //var rootFolder = Directory.GetCurrentDirectory();
-    var rootFolder = "/Users/bernhardrichter/GitHub/dotnet-script";
-
+    var rootFolder = Directory.GetCurrentDirectory();
 
     var packageReferences = GetPackageReferences(filter, rootFolder);
     var latestVersions = await GetLatestVersions(packageReferences.Select(r => r.Name).Distinct().ToArray(), rootFolder);
-
     var packageReferencesGroupedByProject = packageReferences.Where(p => latestVersions[p.Name].NugetVersion > p.Version).GroupBy(p => p.ProjectFile);
-
 
     foreach (var grouping in packageReferencesGroupedByProject)
     {
-        var test = grouping.Count();
         if (grouping.Count() == 0)
         {
             continue;
         }
+
         WriteHeader(Path.GetRelativePath(rootFolder,grouping.Key));
         WriteLine();
         foreach (var packageReference in grouping)
         {
             var latestVersion = latestVersions[packageReference.Name];
-            WriteHighlighted($"{packageReference.Name} {packageReference.Version} => {latestVersion.NugetVersion} ({latestVersion.Feed})");
+
+            if (update)
+            {
+                Command.Capture("dotnet", $"add {packageReference.ProjectFile} package {packageReference.Name}").EnsureSuccessfulExitCode();
+                WriteHighlighted($"{packageReference.Name} {packageReference.Version} => {latestVersion.NugetVersion} ({latestVersion.Feed}) \u2705");
+            }
+            else
+            {
+                WriteHighlighted($"{packageReference.Name} {packageReference.Version} => {latestVersion.NugetVersion} ({latestVersion.Feed})");
+            }
         }
+
         WriteLine();
     }
-    return 0;
-}
-
-private async Task<int> UpdatePackages(string filter){
-
-    var rootFolder = Directory.GetCurrentDirectory();
-
-    var packageReferences = GetPackageReferences(filter, rootFolder);
-    var latestVersions = await GetLatestVersions(packageReferences.Select(r => r.Name).Distinct().ToArray(), rootFolder);
-    foreach (var packageReference in packageReferences)
-    {
-        var latestVersion = latestVersions[packageReference.Name];
-        if (latestVersion.NugetVersion > packageReference.Version)
-        {
-            Command.Capture("dotnet", $"add {packageReference.ProjectFile} package {packageReference.Name}").EnsureSuccessfulExitCode().Dump();
-        }
-    }
-
-    WriteSuccess("All packages updated successfully");
     return 0;
 }
 
@@ -93,8 +83,19 @@ private PackageReference[] GetPackageReferences(string filter, string rootFolder
         var matches = matcher.Matches(content);
         foreach (var match in matches.Cast<Match>())
         {
-            var packageReference = new PackageReference(match.Groups[1].Value, projectFile, NuGetVersion.Parse(match.Groups[2].Value));
-            packageReferences.Add(packageReference);
+            var packageName = match.Groups[1].Value;
+            var version = NuGetVersion.Parse(match.Groups[2].Value);
+            if (!string.IsNullOrWhiteSpace(filter))
+            {
+                if (packageName.StartsWith(filter))
+                {
+                    packageReferences.Add(new PackageReference(packageName, projectFile, version));
+                }
+            }
+            else
+            {
+                packageReferences.Add(new PackageReference(packageName, projectFile, version));
+            }
         }
     }
     return packageReferences.ToArray();
@@ -169,7 +170,6 @@ private SourceRepository[] GetSourceRepositories(string rootFolder)
 
     return repositories.ToArray();
 }
-
 
 private ISourceRepositoryProvider GetSourceRepositoryProvider(string rootFolder)
 {

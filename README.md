@@ -50,7 +50,7 @@ Opens the Travis build history based on the current git repository.
 
 Compares the NuGet package references found in `csproj` files with the latest versions found in the available NuGet feeds. 
 
-To get a an overview packages that can be updated, simply execute the following command.
+To get a an overview packages that can be updated, simply execute the following command in your repo/project folder.
 
 ```shell
 deps
@@ -58,7 +58,7 @@ deps
 
 Example output
 
-```
+```shell
 Analyzing /Users/someUser/somerepo/project_a.csproj
 Analyzing /Users/someUser/somerepo/project_a.csproj
 
@@ -67,23 +67,15 @@ Feeds
 
  * nuget.org [https://api.nuget.org/v3/index.json]
 
+/Users/someUser/somerepo/project_a.csproj
+
 xunit 2.4.0 => 2.4.1 (nuget.org)
 xunit.runner.visualstudio 2.4.0 => 2.4.1 (nuget.org)
-Microsoft.CodeAnalysis.CSharp.Scripting 2.9.0 => 2.10.0 (nuget.org)
+
+/Users/someUser/somerepo/project_b.csproj
+
 System.Configuration.ConfigurationManager 4.4.1 => 4.5.0 (nuget.org)
-Microsoft.CodeAnalysis.CSharp 2.9.0 => 2.10.0 (nuget.org)
-McMaster.Extensions.CommandLineUtils 2.2.2 => 2.2.5 (nuget.org)
-xunit 2.4.0 => 2.4.1 (nuget.org)
-Microsoft.CodeAnalysis.CSharp.Scripting 2.9.0 => 2.10.0 (nuget.org)
-Microsoft.NET.Test.Sdk 15.8.0 => 15.9.0 (nuget.org)
-xunit 2.4.0 => 2.4.1 (nuget.org)
-xunit.runner.visualstudio 2.4.0 => 2.4.1 (nuget.org)
-Microsoft.CodeAnalysis.CSharp.Scripting 2.9.0 => 2.10.0 (nuget.org)
 ```
-
-
-
-
 
 Update all NuGet packages
 
@@ -93,13 +85,5 @@ deps update
 
 Update packages matching simple filter (contains)
 
-```shell
-deps update -f Microsoft
-```
 
-Update packages matching a regular expression.
-
-```shell
-deps update -fr Microsoft.+
-```
 
