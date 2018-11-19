@@ -15,6 +15,7 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using McMaster.Extensions.CommandLineUtils;
+using System.Collections.Concurrent;
 
 var app = new CommandLineApplication();
 var filterOption = app.Option("-f | --filter", "Filter packages", CommandOptionType.SingleValue);
@@ -30,7 +31,9 @@ return app.Execute(Args.ToArray());
 
 private async Task<int> ListPackages(string filter)
 {
-    var rootFolder = Directory.GetCurrentDirectory();
+    //var rootFolder = Directory.GetCurrentDirectory();
+    var rootFolder = "/Users/bernhardrichter/GitHub/dotnet-script";
+
 
     var packageReferences = GetPackageReferences(filter, rootFolder);
     var latestVersions = await GetLatestVersions(packageReferences.Select(r => r.Name).Distinct().ToArray(), rootFolder);
@@ -121,31 +124,32 @@ private async Task<LatestVersion[]> GetLatestVersions(string[] packageReferences
 
     var sourceRepositories = GetSourceRepositories(rootFolder);
 
-    List<LatestVersion> latestVersions = new List<LatestVersion>();
+    var tasks = new List<Task>();
+
+    ConcurrentBag<LatestVersion> result = new ConcurrentBag<LatestVersion>();
+
+
     foreach (var packageReference in packageReferences)
     {
-        latestVersions.Add(await GetLatestVersion(packageReference, sourceRepositories));
+        tasks.Add(GetLatestVersion(packageReference, sourceRepositories, result));
     }
 
-    return latestVersions.ToArray();
+    await Task.WhenAll(tasks);
+
+    return result.ToArray();
+
 }
 
-private async Task<LatestVersion> GetLatestVersion(string packageName, SourceRepository[] repositories)
+private async Task GetLatestVersion(string packageName, SourceRepository[] repositories, ConcurrentBag<LatestVersion> result)
 {
-    List<LatestVersion> allVersions = new List<LatestVersion>();
+    List<LatestVersion> allLatestVersions = new List<LatestVersion>();
     foreach (var repository in repositories)
     {
-        var searchResource = repository.GetResource<PackageSearchResource>();
-        var results = await searchResource.SearchAsync(packageName, new SearchFilter(false), 0,
-                        int.MaxValue,  NullLogger.Instance, CancellationToken.None);
-        var matches = results.Where(m => m.Identity.Id == packageName);
-        foreach (var match in matches)
-        {
-            var versions = await match.GetVersionsAsync();
-            allVersions.AddRange(versions.Select(v => new LatestVersion(packageName,v.Version,repository.ToString())));
-        }
+        var findResource = repository.GetResource<FindPackageByIdResource>();
+        var allVersions = await findResource.GetAllVersionsAsync(packageName, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None);
+        allLatestVersions.Add(new LatestVersion(packageName, allVersions.Last(), repository.ToString()));
     }
-    return allVersions.OrderBy(v => v.NugetVersion).Last();
+    result.Add(allLatestVersions.OrderBy(v => v.NugetVersion).Last());
 }
 
 private SourceRepository[] GetSourceRepositories(string rootFolder)
