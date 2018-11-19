@@ -56,25 +56,10 @@ To get a an overview packages that can be updated, simply execute the following 
 deps
 ```
 
-Example output
+Filter packages 
 
 ```shell
-Analyzing /Users/someUser/somerepo/project_a.csproj
-Analyzing /Users/someUser/somerepo/project_a.csproj
-
-Getting the latest package versions. Hang on.....
-Feeds
-
- * nuget.org [https://api.nuget.org/v3/index.json]
-
-/Users/someUser/somerepo/project_a.csproj
-
-xunit 2.4.0 => 2.4.1 (nuget.org)
-xunit.runner.visualstudio 2.4.0 => 2.4.1 (nuget.org)
-
-/Users/someUser/somerepo/project_b.csproj
-
-System.Configuration.ConfigurationManager 4.4.1 => 4.5.0 (nuget.org)
+deps -f Microsoft
 ```
 
 Update all NuGet packages
@@ -83,7 +68,13 @@ Update all NuGet packages
 deps update
 ```
 
-Update packages matching simple filter (contains)
+Update packages matching a filter 
+
+```shell
+deps update -f Microsoft
+```
+
+
 
 
 
