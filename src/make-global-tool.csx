@@ -1,6 +1,7 @@
 #!/usr/bin/env dotnet-script
 #load "utils.csx"
 #load "command.csx"
+#load "console.csx"
 #r "nuget:McMaster.Extensions.CommandLineUtils, 2.2.5"
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -36,7 +37,8 @@ namespace ScriptWrapper
     {
         static async Task<int> Main(string[] args)
         {
-            ExecuteScriptCommandOptions options = new ExecuteScriptCommandOptions(new ScriptFile(""$SCRIPTFILE"") , args, OptimizationLevel.Release, Array.Empty<string>(), false, false);
+            var pathToScript = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ""$SCRIPTFILE"");
+            ExecuteScriptCommandOptions options = new ExecuteScriptCommandOptions(new ScriptFile(pathToScript) , args, OptimizationLevel.Release, Array.Empty<string>(), false, false);
             var executeScriptCommand = new ExecuteScriptCommand(ScriptConsole.Default, (type) => (m,l,e) => {});
             return await executeScriptCommand.Run<int, CommandLineScriptGlobals>(options);
         }
@@ -62,6 +64,7 @@ var toolNameOption = app.Option("-n | ---name", "The name of the command (defaul
 
 var versionOption  = app.Option("-v | --version", "The version to be used when creating the package", CommandOptionType.SingleValue);
 
+var outputFolderOption = app.Option("-o | --output", "The output folder for the NuGet package", CommandOptionType.SingleValue);
 
 app.OnExecute(() =>
 {
@@ -88,6 +91,8 @@ private void CreateToolPackage()
     var packageId = packageIdOption.HasValue() ? packageIdOption.Value() : $"dotnet-{toolCommandName}";
 
     var packageVersion = versionOption.HasValue() ? versionOption.Value() : "1.0.0";
+
+    var outputFolder = outputFolderOption.HasValue() ? outputFolderOption.Value() : pathToScriptFolder;
 
     using (var buildFolder = new DisposableFolder())
     {
@@ -119,11 +124,15 @@ private void CreateToolPackage()
         var pathToProjectFile = Path.Combine(buildFolder.Path, "project.csproj");
         projectFile.Save(pathToProjectFile);
 
-
         var pathToProgramFile = Path.Combine(buildFolder.Path, "program.cs");
         File.WriteAllText(pathToProgramFile, ProgramTemplate.Replace("$SCRIPTFILE", fileName));
 
-        Command.Capture("dotnet", $"pack -c release -o {pathToScriptFolder}", buildFolder.Path).EnsureSuccessfulExitCode();
+        Command.Capture("dotnet", $"pack -c release -o {outputFolder}", buildFolder.Path).EnsureSuccessfulExitCode();
+        WriteSuccess($"Successfully created global tool package {packageId}.{packageVersion}.nupkg");
+        WriteLine();
+        WriteHighlighted("Try it out locally by executing the following command");
+        WriteLine($"dotnet tool install -g {packageId} --add-source .");
+
     }
 }
 
