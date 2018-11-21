@@ -149,7 +149,11 @@ private async Task GetLatestVersion(string packageName, SourceRepository[] repos
     {
         var findResource = repository.GetResource<FindPackageByIdResource>();
         var allVersions = await findResource.GetAllVersionsAsync(packageName, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None);
-        allLatestVersions.Add(new LatestVersion(packageName, allVersions.Where(v => !v.IsPrerelease).Last(), repository.ToString()));
+        var latestVersionInRepository = allVersions.Where(v => !v.IsPrerelease).LastOrDefault();
+        if (latestVersionInRepository != null)
+        {
+            allLatestVersions.Add(new LatestVersion(packageName, latestVersionInRepository, repository.ToString()));
+        }
     }
 
     result.Add(allLatestVersions.OrderBy(v => v.NugetVersion).Last());

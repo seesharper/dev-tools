@@ -74,7 +74,19 @@ Update packages matching a filter
 deps update -f Microsoft
 ```
 
+#### tool
 
+Turns you favourite script into a dotnet global tool.
+
+```Shell
+make-global-tool main.csx -d "Some description" -v 1.0.0
+```
+
+
+
+
+
+make-global-tool $(cat config)
 
 
 
