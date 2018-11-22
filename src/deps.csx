@@ -24,17 +24,22 @@ var updateCommand = app.Command("update", c => {
     c.Description = "Updates packages to their latest versions";
 });
 
+var versionOption = app.VersionOption("-v | --version", "1.0.1");
+
 updateCommand.OnExecute(() => ProcessPackages(filterOption.Value(), update:true));
 
 app.OnExecute(() => ProcessPackages(filterOption.Value(), update: false));
 
 var helpOption = app.HelpOption("-h | --help");
 
+
 return app.Execute(Args.ToArray());
 
 private async Task<int> ProcessPackages(string filter, bool update)
 {
     var rootFolder = Directory.GetCurrentDirectory();
+    rootFolder = "/Users/bernhardrichter/GitHub/Pipes";
+
 
     var packageReferences = GetPackageReferences(filter, rootFolder);
     var latestVersions = await GetLatestVersions(packageReferences.Select(r => r.Name).Distinct().ToArray(), rootFolder);
@@ -89,12 +94,12 @@ private PackageReference[] GetPackageReferences(string filter, string rootFolder
             {
                 if (packageName.StartsWith(filter))
                 {
-                    packageReferences.Add(new PackageReference(packageName, projectFile, version));
+                    packageReferences.Add(new PackageReference(packageName.Trim(), projectFile, version));
                 }
             }
             else
             {
-                packageReferences.Add(new PackageReference(packageName, projectFile, version));
+                packageReferences.Add(new PackageReference(packageName.Trim(), projectFile, version));
             }
         }
     }
@@ -155,8 +160,16 @@ private async Task GetLatestVersion(string packageName, SourceRepository[] repos
             allLatestVersions.Add(new LatestVersion(packageName, latestVersionInRepository, repository.ToString()));
         }
     }
+    try
+    {
+        result.Add(allLatestVersions.OrderBy(v => v.NugetVersion).Last());
+    }
+    catch (System.Exception)
+    {
 
-    result.Add(allLatestVersions.OrderBy(v => v.NugetVersion).Last());
+        throw;
+    }
+
 }
 
 private SourceRepository[] GetSourceRepositories(string rootFolder)
