@@ -1,11 +1,17 @@
 #!/usr/bin/env dotnet-script
+#load "build-context.csx"
 #load "nuget:Dotnet.Build, 0.3.9"
-using static Command;
 
-// TODO
+var rootFolder = FileUtils.GetScriptFolder();
+var pathToDepsTests = Path.Combine(rootFolder, "../src/test/deps.tests.csx");
 
-var test = Command.Execute("deps", "-h");
+DotNet.Test(pathToDepsTests);
 
-var result = Command.Capture("make-global-tool",$"../src/make-global-tool.csx{File.ReadAllText("make-global-tool.args")})");
+var pathToDepsScript = Path.Combine(rootFolder, "../src/deps.csx");
+var pathToMakeGlobalToolScript = Path.Combine(rootFolder, "../src/make-global-tool.csx");
 
-Console.WriteLine("Hello world!");
+Command.Execute("make-global-tool",$"{pathToDepsScript} {File.ReadAllText("deps.args")} -o {Path.Combine(rootFolder, "Artifacts", "NuGet")}");
+
+Command.Execute("make-global-tool",$"{pathToMakeGlobalToolScript} {File.ReadAllText("make-global-tool.args")} -o {Path.Combine(rootFolder, "Artifacts", "NuGet")}");
+
+
