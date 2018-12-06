@@ -15,7 +15,7 @@ matrix:
     dist: trusty
 before_script:
   - dotnet tool install dotnet-script -g
-  - dotnet tool install make-global-tool -g
+  - dotnet tool install dotnet-make-global-tool -g
 script:
   - chmod +x build.sh
   - "./build.sh"
