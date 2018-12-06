@@ -1,4 +1,5 @@
 #!/bin/bash
+dotnet install tool dotnet-script -g
 dotnet install tool make-global-tool -g
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 DOTNET_SCRIPT="$SCRIPT_DIR/build/dotnet-script"
