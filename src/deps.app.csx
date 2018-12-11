@@ -27,17 +27,21 @@ public static int Execute(params string[] args)
 
     var versionOption = app.VersionOption("-v | --version", "1.0.1");
     var cwd = app.Option("-cwd |--workingdirectory <currentworkingdirectory>", "Working directory for the code compiler. Defaults to current directory.", CommandOptionType.SingleValue);
+    var preReleaseOption = app.Option("-p || --pre ", "Allow prerelease packages", CommandOptionType.NoValue);
+
+
     updateCommand.OnExecute(() =>
     {
         var workingDirectory = cwd.HasValue() ? cwd.Value() : Directory.GetCurrentDirectory();
-        return ProcessPackages(workingDirectory,filterOption.Value(), update:true);
+        return ProcessPackages(workingDirectory,filterOption.Value(), preReleaseOption.HasValue(),update:true);
     });
+
 
 
     app.OnExecute(() =>
     {
         var workingDirectory = cwd.HasValue() ? cwd.Value() : Directory.GetCurrentDirectory();
-        return ProcessPackages(workingDirectory, filterOption.Value(), update: false);
+        return ProcessPackages(workingDirectory, filterOption.Value(), preReleaseOption.HasValue(), update: false);
     });
 
     var helpOption = app.HelpOption("-h | --help");
@@ -47,19 +51,14 @@ public static int Execute(params string[] args)
 
 
 
-private static async Task<int> ProcessPackages(string rootFolder, string filter, bool update)
+private static async Task<int> ProcessPackages(string rootFolder, string filter, bool preRelease, bool update)
 {
     var packageReferences = GetPackageReferences(filter, rootFolder);
-    var latestVersions = await GetLatestVersions(packageReferences.Select(r => r.Name).Distinct().ToArray(), rootFolder);
+    var latestVersions = await GetLatestVersions(packageReferences.Select(r => r.Name).Distinct().ToArray(), rootFolder, preRelease);
     var packageReferencesGroupedByProject = packageReferences.Where(p => !latestVersions[p.Name].IsValid || latestVersions[p.Name].NugetVersion > p.Version).GroupBy(p => p.ProjectFile);
 
     foreach (var grouping in packageReferencesGroupedByProject)
     {
-        // if (grouping.Count() == 0)
-        // {
-        //     continue;
-        // }
-
         WriteHeader(Path.GetRelativePath(rootFolder,grouping.Key));
         WriteLine();
         foreach (var packageReference in grouping)
@@ -67,7 +66,7 @@ private static async Task<int> ProcessPackages(string rootFolder, string filter,
             var latestVersion = latestVersions[packageReference.Name];
             if (!latestVersion.IsValid)
             {
-                WriteError($"Unable to find package {packageReference.Name}");
+                WriteError($"Unable to find package {packageReference.Name} ({packageReference.Version})");
                 continue;
             }
             if (update)
@@ -150,7 +149,7 @@ private class LatestVersion
     public bool IsValid { get => !string.IsNullOrWhiteSpace(Feed); }
 }
 
-private static async Task<IDictionary<string, LatestVersion>> GetLatestVersions(string[] packageNames, string rootFolder)
+private static async Task<IDictionary<string, LatestVersion>> GetLatestVersions(string[] packageNames, string rootFolder, bool preRelease)
 {
     WriteHighlighted($"Getting the latest package versions. Hang on.....");
 
@@ -158,19 +157,29 @@ private static async Task<IDictionary<string, LatestVersion>> GetLatestVersions(
 
     var result = new ConcurrentBag<LatestVersion>();
 
-    await Task.WhenAll(packageNames.Select(name => GetLatestVersion(name, sourceRepositories, result)));
+    await Task.WhenAll(packageNames.Select(name => GetLatestVersion(name, preRelease, sourceRepositories, result)));
 
     return result.ToDictionary(v => v.PackageName);
 }
 
-private static async Task GetLatestVersion(string packageName, SourceRepository[] repositories, ConcurrentBag<LatestVersion> result)
+private static async Task GetLatestVersion(string packageName, bool preRelease, SourceRepository[] repositories, ConcurrentBag<LatestVersion> result)
 {
     List<LatestVersion> allLatestVersions = new List<LatestVersion>();
     foreach (var repository in repositories)
     {
         var findResource = repository.GetResource<FindPackageByIdResource>();
         var allVersions = await findResource.GetAllVersionsAsync(packageName, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None);
-        var latestVersionInRepository = allVersions.Where(v => !v.IsPrerelease).LastOrDefault();
+        NuGetVersion latestVersionInRepository;
+
+        if (preRelease)
+        {
+            latestVersionInRepository = allVersions.LastOrDefault();
+        }
+        else
+        {
+            latestVersionInRepository = allVersions.Where(v => !v.IsPrerelease).LastOrDefault();
+        }
+
         if (latestVersionInRepository != null)
         {
             allLatestVersions.Add(new LatestVersion(packageName, latestVersionInRepository, repository.ToString()));
