@@ -4,4 +4,4 @@
 
 var repo = Git.GetRepositoryInfo();
 
-Browser.OpenUrl($"https://ci.appveyor.com/project/{repo.Owner}/{repo.ProjectName}/history");
+Browser.OpenUrl($"https://ci.appveyor.com/project/{repo.Owner}/{repo.ProjectName.Replace(".", "-")}/history");
