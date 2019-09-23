@@ -35,12 +35,12 @@ httpClient.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.Produ
 
 var repo = Git.GetRepositoryInfo();
 
-var result = await httpClient.ExecuteAsync(query, new { owner = repo.Owner, name = repo.ProjectName});
+var result = await httpClient.ExecuteAsync(query, new { owner = repo.Owner, name = repo.ProjectName });
 
 var issues = result.Get<Issue[]>("repository.issues.nodes");
-foreach(var issue in issues)
+foreach (var issue in issues.OrderByDescending(i => i.CreatedAt))
 {
-  WriteLine($"#{issue.Number} {issue.Title} ({issue.Url}) ({issue.CreatedAt.ToShortDateString()})");
+    WriteLine($"#{issue.Number} {issue.Title} ({issue.Url}) ({issue.CreatedAt.ToShortDateString()})");
 }
 
 public class Issue
@@ -51,5 +51,5 @@ public class Issue
 
     public DateTime CreatedAt { get; set; }
 
-    public string Url {get;set;}
+    public string Url { get; set; }
 }
