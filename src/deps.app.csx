@@ -37,7 +37,6 @@ public static int Execute(params string[] args)
     });
 
 
-
     app.OnExecute(() =>
     {
         var workingDirectory = cwd.HasValue() ? cwd.Value() : Directory.GetCurrentDirectory();
@@ -71,7 +70,7 @@ private static async Task<int> ProcessPackages(string rootFolder, string filter,
             }
             if (update)
             {
-                Command.Capture("dotnet", $"add {packageReference.ProjectFile} package {packageReference.Name}").EnsureSuccessfulExitCode();
+                Command.Capture("dotnet", $"add {packageReference.ProjectFile} package {packageReference.Name} -v {latestVersion.NugetVersion.ToString()}").EnsureSuccessfulExitCode();
                 WriteHighlighted($"{packageReference.Name} {packageReference.Version} => {latestVersion.NugetVersion} ({latestVersion.Feed}) \u2705");
             }
             else

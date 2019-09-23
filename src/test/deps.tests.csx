@@ -37,6 +37,9 @@ public class DependencyTests
         }
     }
 
+    
+
+
     public void ShouldOutputWarningWhenPackageIsNotFound()
     {
         using (var projectFolder = new DisposableFolder())

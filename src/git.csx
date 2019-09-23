@@ -20,15 +20,25 @@ public static class Git
         var match = Regex.Match(urlToPushOrigin, @".*.com\/(.*)\/(.*)\.");
         var owner = match.Groups[1].Value;
         var project = match.Groups[2].Value;
-        return new RepositoryInfo(){Owner = owner, ProjectName = project};
+        return new RepositoryInfo() { Owner = owner, ProjectName = project };
+    }
+
+    public static string GetLocalFolder()
+    {
+        var result = Capture("git", "rev-parse --show-toplevel");
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException("Not a git folder");
+        }
+        return result.StandardOut.RemoveNewLine();
     }
 }
 
 public class RepositoryInfo
 {
-    public string Owner {get;set;}
+    public string Owner { get; set; }
 
-    public string ProjectName {get;set;}
+    public string ProjectName { get; set; }
 }
 
 private static string RemoveNewLine(this string value)
